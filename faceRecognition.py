@@ -1,18 +1,9 @@
-# USAGE
-# python detect_blinks.py --shape-predictor shape_predictor_68_face_landmarks.dat --video blink_detection_demo.mp4
-# python detect_blinks.py --shape-predictor shape_predictor_68_face_landmarks.dat
-
-# import the necessary packages
 from scipy.spatial import distance as dist
 from imutils.video import FileVideoStream
 from imutils.video import VideoStream
 from imutils import face_utils
 import math
-
-
-
 import numpy as np
-
 import argparse
 import imutils
 import time
@@ -21,9 +12,13 @@ import os
 # import RPi.GPIO as GPIO
 import pygame.mixer
 from tkinter import *
-
-
 import cv2
+from datetime import datetime
+
+
+
+
+
 class FaceRecognition(Toplevel):
     def __init__(self):
        
@@ -79,6 +74,14 @@ class FaceRecognition(Toplevel):
         recognizer.read('trainer/trainer.yml')
         cascadePath = "haarcascade_frontalface_default.xml"
         faceCascade = cv2.CascadeClassifier(cascadePath);
+        #gun_cascade
+        gun_cascade = None
+        try:
+            gun_cascade = cv2.CascadeClassifier('knifecascade.xml')
+        except cv2.error as e:
+            print("OpenCV Error:", e)
+        first_frame = None
+        gun_exists = None
 
         font = cv2.FONT_HERSHEY_SIMPLEX
 
@@ -115,6 +118,10 @@ class FaceRecognition(Toplevel):
                 img = imutils.resize(img, width=550,height=250)
                 gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
                 
+                
+                knives = gun_cascade.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=10, minSize=(150, 150))
+                
+                
                 # detect faces in the grayscale frame
                 
                 
@@ -132,6 +139,29 @@ class FaceRecognition(Toplevel):
                     # determine the facial landmarks for the face region, then
                     # convert the facial landmark (x, y)-coordinates to a NumPy
                     # array
+                    
+                    if len(knives) > 0:
+                        gun_exists = True
+
+                    for (x,y,w,h) in knives:
+                        cv2.rectangle(img, (x,y), (x+w,y+h), (0,255,0), 2)
+                        
+
+                    if first_frame is None:
+                        first_frame = gray
+                        continue
+                   
+                    key = cv2.waitKey(1) & 0XFF
+                    if key == ord('q'):
+                        break    
+                    
+                    if gun_exists:
+                        print('Gun exists')
+                    else:
+                        print('Gun not found')
+                    
+                    
+                          
                     shape = predictor(gray, rect)
                     shape = face_utils.shape_to_np(shape)
 
@@ -157,19 +187,11 @@ class FaceRecognition(Toplevel):
                     if ear < EYE_AR_THRESH:
                         COUNTER += 1
                         for(x,y,w,h) in faces:
-
                             cv2.rectangle(img, (x,y), (x+w,y+h), (0,255,0), 2)
-
                             id1, confidence = recognizer.predict(gray[y:y+h,x:x+w])
-                           
-
-                            # Check if confidence is less them 100 ==> "0" is perfect match 
                             confidence = int(confidence)
-                            
-                            if (confidence < 90):
-                                
+                            if (confidence < 90): 
                                 id="Family Member"
-                                
                                 print(confidence)
                                 # GPIO.setmode(GPIO.BCM)
                                 # GPIO.setup(26, GPIO.OUT)
@@ -228,6 +250,7 @@ class FaceRecognition(Toplevel):
                 
                 
                 cv2.imshow("ADUAS", img)
+                
                 cv2.waitKey(1)  # Add a small delay
                 # Press 'ESC' for exiting video
             

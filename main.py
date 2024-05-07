@@ -37,7 +37,7 @@ class MainPage:
         # face=FaceRecognition()
 
 
-#..........functions......
+        #..........functions......
 
     def faceRecognition(self):
         face=FaceRecognition()
